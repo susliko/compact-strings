@@ -15,9 +15,7 @@ object Huffman extends Compress {
   def compress(bytes: Array[Byte]): Array[Byte] =
     val text = new String(bytes, UTF_8)
     val tree = createTree(text)
-    // println(s"Encoded tree: $tree")
     val bits = encodeHuffman(tree, text)
-    // println(s"Encoded bits: $bits")
     val dataBytes = bits.grouped(8).map(toByte).toArray
     val treeBytes = tree.encode(size)
     treeBytes.size.encodeDelim(size) ++ treeBytes ++
@@ -29,7 +27,6 @@ object Huffman extends Compress {
       treeSize <- bytes.slice(0, size).decode[Int](size)
       x = size + treeSize
       tree <- bytes.slice(size, x).decode[Tree](size)
-      // _ = println(s"Decoded tree: $tree")
       u = x + size
       totalBits <- bytes.slice(x, u).decode[Int](size)
       y = u + size
@@ -37,7 +34,6 @@ object Huffman extends Compress {
       compressedData = bytes.slice(y, y + dataSize)
       rawBits = compressedData.toVector.flatMap(fromByte)
       bits = rawBits.take(totalBits)
-      // _ = println(s"Decoded bits: $bits")
       data = decodeHuffman(tree, bits).getBytes(UTF_8)
     } yield data).toOption.get
 

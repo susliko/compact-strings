@@ -36,6 +36,30 @@
 Поскольку имеем дело со строковыми данными с неравномерным использованием символов алфавита (натуральный язык), имеет смысл применить сжатие через [коды Хаффмана](https://ru.wikipedia.org/wiki/%D0%9A%D0%BE%D0%B4_%D0%A5%D0%B0%D1%84%D1%84%D0%BC%D0%B0%D0%BD%D0%B0)
 
 #### Реализация
+Данные моделируются как массив шаблонов и массив сообщений со ссылками на шаблоны, а тажке данными для интерполяции:
+```scala
+case class Diagnostics(
+    templates: Vector[Template],
+    messages: Vector[Diagnostics.Message]
+)
+object Diagnostics:
+  case class Message(template: Int, data: Vector[String])
+```
+
+Для (де)сериализации определен кодек нужных типов:
+```scala
+trait Codec[T]:
+  def encode(t: T, delimBytes: Int): Array[Byte]
+  def decode(bytes: Array[Byte], delimBytes: Int): Either[Codec.Failure, T]
+
+object Codec:
+  case class Failure(reason: String)
+```
+
+[Реализован](https://github.com/susliko/compact-strings/blob/master/src/main/scala/gos/Huffman.scala) алгоритм сжатия через коды Хаффмана. Дерево кодов также переводится в бинарный формат и хранится перед закодированными данными.
+
+Для кодека и алгоритма написаны [тесты](https://github.com/susliko/compact-strings/tree/master/src/test/scala/gos)
+
 
 ### Тестирования и запуск
 Для запуска необходим [sbt](https://sdkman.io/sdks#sbt)
@@ -45,7 +69,7 @@
 sbt test
 ```
 
-Запуск [примера](foo):
+Запуск [примера](https://github.com/susliko/compact-strings/blob/master/src/main/scala/gos/Main.scala#L58):
 ```
 sbt run
 ```
