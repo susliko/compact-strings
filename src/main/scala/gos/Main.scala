@@ -17,10 +17,9 @@ object Diagnostics:
   object Message:
     given Codec[Message] with
       def encode(t: Message, db: Int): Array[Byte] =
-        val template = t.template.encode(db)
+        val template = t.template.encode(4)
         val data = t.data.encode(db)
-        template.size.encodeDelim(db) ++
-          template ++
+        template ++
           data.size.encodeDelim(db) ++
           data
       def decode(
@@ -28,12 +27,10 @@ object Diagnostics:
           db: Int
       ): Either[Codec.Failure, Message] =
         for {
-          templateSize <- bytes.slice(0, db).decode[Int](db)
-          template <- bytes.slice(db, db + templateSize).decode[Int](db)
-          x = db + templateSize
-          dataSize <- bytes.slice(x, x + db).decode[Int](db)
-          y = x + db
-          data <- bytes.slice(y, y + dataSize).decode[Vector[String]](db)
+          template <- bytes.slice(0, 4).decode[Int](4)
+          x = 4 + db
+          dataSize <- bytes.slice(4, x).decode[Int](db)
+          data <- bytes.slice(x, x + dataSize).decode[Vector[String]](db)
         } yield Message(template, data)
 
   given Codec[Diagnostics] with
@@ -60,14 +57,24 @@ object Diagnostics:
 
 @main def example: Unit =
   import Diagnostics.*
-  val t1 = "К сожалению, сервис {0} недоступен по причине {1}"
-  val t2 = "Заказ {0} оформлен, его доставит курьер {1} по адресу {2}"
-  val t1m1 = Message(0, Vector("ПОКУПОК", "ПАДЕНИЯ"))
-  val t1m2 = Message(0, Vector("ПРОДАЖ", "ПОДЪЁМА"))
-  val t2m1 = Message(1, Vector("A", "ГАМЛЕТ", "ул. Сезам, д. 42"))
-  val t2m2 = Message(1, Vector("B", "ИМАДЖОН", "ул. Ленина, д. 0"))
+  val t1 = Template(
+    "К сожалению, сервис {0} недоступен по причине {1}"
+  )
+  val t2 = Template(
+    "Оплата {0} успешна. Заказ доставит курьер {1} по адресу {2}"
+  )
+  val t1m1 = Message(0, Vector("PURCHASES", "RELEASE"))
+  val t1m2 = Message(0, Vector("PAYMENTS", "MAINTANANCE"))
+  val t2m1 = Message(1, Vector("0", "Зик Егер", "レベリオ"))
+  val t2m2 = Message(1, Vector("1", "Эрен Егер", "パラディ"))
   val diagnostics = Diagnostics(Vector(t1, t2), Vector(t1m1, t1m2, t2m1, t2m2))
 
-  val serdeDiagnostics =
-    diagnostics.encode(delimBytes = 2).decode[Diagnostics](delimBytes = 2)
-  println(serdeDiagnostics.toOption.get.compile.mkString("\n"))
+  val processedDiagnostics =
+    diagnostics
+      .encode(delimBytes = 2)
+      .decode[Diagnostics](delimBytes = 2)
+
+  processedDiagnostics.fold(
+    e => println(e),
+    d => println(d.compile.mkString("\n"))
+  )
